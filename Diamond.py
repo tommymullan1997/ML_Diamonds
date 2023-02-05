@@ -17,10 +17,12 @@ import seaborn as sns
 
 from sklearn.model_selection import train_test_split, cross_val_score
 from sklearn.linear_model import LinearRegression
-from sklearn.metrics import mean_squared_error, accuracy_score, mean_absolute_error
+from sklearn.preprocessing import StandardScaler
+from sklearn.neighbors import KNeighborsRegressor
+from sklearn.metrics import mean_squared_error,r2_score, accuracy_score, mean_absolute_error, explained_variance_score
 from sklearn.tree import DecisionTreeRegressor
 from sklearn.ensemble import RandomForestRegressor
-import xgboost
+import xgboost as xg
 from sklearn.pipeline import Pipeline
 
 # %% --------------------------------------------------------------------------
@@ -94,48 +96,45 @@ print(f"y_train shape: {y_train.shape}")
 print(f"X_test shape: {X_test.shape}")
 print(f"y_test shape: {y_test.shape}")
 
+#%% Models
+pipeline_lr=Pipeline([("scalar1",StandardScaler()),
+                     ("lr_classifier",LinearRegression())])
+
+pipeline_dt=Pipeline([("scalar2",StandardScaler()),
+                     ("dt_classifier",DecisionTreeRegressor())])
+
+pipeline_rf=Pipeline([("scalar3",StandardScaler()),
+                     ("rf_classifier",RandomForestRegressor())])
+
+
+pipeline_kn=Pipeline([("scalar4",StandardScaler()),
+                     ("rf_classifier",KNeighborsRegressor())])
+
+
+pipeline_xgb=Pipeline([("scalar5",StandardScaler()),
+                     ("rf_classifier",xg.XGBRegressor())])
+
+# List of all the pipelines
+pipelines = [pipeline_lr, pipeline_dt, pipeline_rf, pipeline_kn, pipeline_xgb]
+
+# Dictionary of pipelines and model types for ease of reference
+pipe_dict = {0: "LinearRegression", 1: "DecisionTree", 2: "RandomForest",3: "KNeighbors", 4: "XGBRegressor"}
+
+# Fit the pipelines
+for pipe in pipelines:
+    pipe.fit(X_train, y_train)
+    
+cv_results_rms = []
+for i, model in enumerate(pipelines):
+    cv_score = cross_val_score(model, X_train,y_train,scoring="explained_variance", cv=10)
+    cv_results_rms.append(cv_score)
+    print("%s: %f " % (pipe_dict[i], cv_score.mean()))
+
+
 # %% --------------------------------------------------------------------------
-# BaseLine Models 
+# Evaluate predicted data 
 # -----------------------------------------------------------------------------
-rfc = RandomForestRegressor()
-rfc.fit(X_train, y_train)
-y_pred = rfc.predict(X_test)
-print("Mean Squared Error :", mean_squared_error(y_test, y_pred))
-print("R2 Score :", rfc.score(X_test, y_test))
-print("MAE :", mean_absolute_error(y_test, y_pred))
-
-plt.scatter(y_test, y_pred)
-plt.xlabel("Actual Values")
-plt.ylabel("Predicted Values")
-plt.show()
-
-
-# %% --------------------------------------------------------------------------
-# Decision Tree 
-# -----------------------------------------------------------------------------
-dt_model = DecisionTreeRegressor()
-dt_model.fit(X_train, y_train)
-y_pred = dt_model.predict(X_test)
-print("Mean Squared Error :", mean_squared_error(y_test, y_pred))
-print("R2 Score :", rfc.score(X_test, y_test))
-print("MAE :", mean_absolute_error(y_test, y_pred))
-
-# %% --------------------------------------------------------------------------
-# Linear Regression
-# -----------------------------------------------------------------------------
-lr_model = LinearRegression()
-lr_model.fit(X_train, y_train)
-y_pred = lr_model.predict(X_test)
-print("Mean Squared Error :", mean_squared_error(y_test, y_pred))
-print("R2 Score :", rfc.score(X_test, y_test))
-print("MAE :", mean_absolute_error(y_test, y_pred))
-
-# %% --------------------------------------------------------------------------
-# XGBoost
-# -----------------------------------------------------------------------------
-xgb_model = xgboost.XGBRegressor()
-xgb_model.fit(X_train, y_train)
-y_pred = xgb_model.predict(X_test)
-print("Mean Squared Error :", mean_squared_error(y_test, y_pred))
-print("R2 Score :", rfc.score(X_test, y_test))
-print("MAE :", mean_absolute_error(y_test, y_pred))
+y_pred = pipeline_xgb.predict(X_test)
+print(f"R2 : {r2_score(y_test, y_pred)}")
+print(f"MAE : {mean_absolute_error(y_test, y_pred)}")
+print(f"MSE : {mean_squared_error(y_test, y_pred)}")
